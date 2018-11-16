@@ -1,0 +1,41 @@
+POST http://127.0.0.1:9999/rules/
+Content-Type: application/json
+
+{
+  "name": "darmowe okulary do teleizora 3d!!",
+  "rule": "3 in all_products_attribute_ids",
+  "additionalProducts": [
+    {"id": 5, "q": 1}
+  ]
+}
+
+###
+
+
+GET http://127.0.0.1:9999/rules/60fbe6096fd746c605caab64c1206f16
+Content-Type: application/json
+
+###
+
+
+GET http://127.0.0.1:9999/rules/
+Content-Type: application/json
+
+###
+
+DELETE http://127.0.0.1:9999/rules/4aee8bc39ae7f9f1c86c945b958b9c97
+Content-Type: application/json
+
+###
+
+PUT http://127.0.0.1:9999/rules/60fbe6096fd746c605caab64c1206f16
+Content-Type: application/json
+
+{
+  "name": "darmowe okulary do teleizora 3d!",
+  "rule": "3 in all_products_attribute_ids",
+  "valueMultiplier": 0.8,
+  "valueModifier": -30
+}
+
+###
