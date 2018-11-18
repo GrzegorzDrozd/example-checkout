@@ -84,7 +84,8 @@ class RuleContext {
     public function getAllProductsCategories(): array {
         $categories = [];
         foreach ($this->getProducts() as $product) {
-            $categories += $product->categories;
+            /** @noinspection SlowArrayOperationsInLoopInspection */
+            $categories = array_merge($categories, $product->categories);
         }
         return array_unique($categories);
     }
