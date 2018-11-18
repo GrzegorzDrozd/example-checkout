@@ -1,11 +1,11 @@
 <?php
-
 namespace App\Models\Product;
 
 use App\Models\AbstractEntity;
 
 /**
- * Class Entity
+ * Product entity
+ *
  * @package App\Models
  */
 class Entity extends AbstractEntity {
@@ -21,11 +21,24 @@ class Entity extends AbstractEntity {
     public $name;
 
     /**
+     * List of categories that this product belogs to.
+     *
+     * @example
+     * 'Super Duper/Telewizory',
+     * 'RTV/Telewizory/LCD',
+     * 'RTV/Kino Domowe/Telewizory',
+     *
      * @var string[]
      */
     public $categories = [];
 
     /**
+     * List of tags for product.
+     *
+     * For @example:
+     * 'large',
+     * 'replacement_package'
+     *
      * @var array
      */
     public $tags = [];

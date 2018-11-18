@@ -1,11 +1,11 @@
 <?php
-
 namespace App\Models\User;
 
 use App\Models\AbstractEntity;
 
 /**
- * Class Entity
+ * User entity
+ * 
  * @package App\Models
  */
 class Entity extends AbstractEntity {
@@ -26,11 +26,18 @@ class Entity extends AbstractEntity {
     public $countryCode;
 
     /**
+     * Groups that this user belongs to
+     *
      * @var string[]
      */
     public $groups = [];
 
     /**
+     * Tags assigned to this user.
+     *
+     * @example
+     * ['frequent_buyer', 'more_than_10_orders_this_year'],
+     *
      * @var string[]
      */
     public $tags = [];

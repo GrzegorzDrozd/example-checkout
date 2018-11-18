@@ -1,13 +1,16 @@
 <?php
-
 namespace App\Services;
-
 
 use App\Models\Rule\Collection;
 use App\Models\User\Entity;
-use Hoa\Ruler\Context;
+use App\Services\Rules\RuleContext;
 use Hoa\Ruler\Ruler;
 
+/**
+ * Process rules.
+ *
+ * @package App\Services
+ */
 class RulesService {
 
     /**
@@ -20,25 +23,34 @@ class RulesService {
      */
     protected $ruleRepository;
 
+    /**
+     * @var RuleContext
+     */
+    protected $context;
 
     /**
      * RulesService constructor.
+     * 
      * @param Ruler $ruler
+     * @param RuleContext $context
      * @param Collection $ruleRepository
      */
-    public function __construct(Ruler $ruler, Collection $ruleRepository) {
-        $this->ruler = $ruler;
-
-        $this->ruleRepository = $ruleRepository;
+    public function __construct(Ruler $ruler, RuleContext $context, Collection $ruleRepository) {
+        $this->setRuler($ruler);
+        $this->setContext($context);
+        $this->setRuleRepository($ruleRepository);
     }
 
     /**
-     * @param array                         $products
+     * Calculate basket value
+     *
+     * @param \App\Models\Product\Entity[]  $products
      * @param \App\Models\User\Entity       $user
      * @return array
      */
     public function calculateCheckoutPrice(array $products, Entity $user): array {
 
+        // prepare return fields
         $return = [
             'price'                 => 0,
             'price_with_discounts'  => 0,
@@ -46,42 +58,128 @@ class RulesService {
             'products'              => [],
         ];
 
+        $ruleContext = $this->getContext();
+        $ruleContext->setProducts($products);
+        $ruleContext->setUser($user);
 
-        $context        = $this->getContext($products, $user);
-        
+        $context     = $ruleContext->prepareContext();
+
+        // products to append to the basket
         $appendBasket   = [];
-        $appliedRules   = [];
+
+        // basket multiplier
         $multiplier     = 1;
+
+        // basked modifier
         $modifier       = 0;
 
+        // base time for time calculation
         $t = new \DateTime();
-        foreach ($this->ruleRepository->getAll() as $rule) {
+
+        // iterate over products and add some additional fields to avoid bunch of ifs below
+        foreach($products as $product) {
+            $product->price_with_discounts  = null;
+            $product->applied_rules         = [];
+            $product->multiplier            = 1;
+            $product->modiffer              = 0;
+        }
+
+        /** @var \App\Models\Rule\Entity $rule */
+        foreach ($this->getRuleRepository()->getAll(true) as $rule) {
 
             // we can eliminate rules that are not yet in the effect or are from the past
             // @todo disable rules from the past?
-            if (!empty($rule->since) and $t < $rule->since) {
+            if ($rule->since !== null && $t < $rule->since) {
                 continue;
             }
 
-            if (!empty($rule->until) and $t > $rule->until) {
+            if ($rule->until !== null && $t > $rule->until) {
                 continue;
             }
 
-            $status = $this->ruler->assert($rule->rule, $context);
+            try {
+                // check if rule evaluates to true
+                $status = $this->getRuler()->assert($rule->rule, $context);
+            } catch (\Hoa\Ruler\Exception\Asserter $e) {
+                continue;
+            }
 
-            if ($status) {
-                $appliedRules[] = $rule->name;
+            if (!$status) {
+                continue;
+            }
+
+            // add rule to the list of rules applied to the cart.
+            $return['applied_rules'][] = $rule->name;
+            
+            // check if rule adds products to basket
+            if (!empty($rule->additionalProducts)) {
+                /** @noinspection SlowArrayOperationsInLoopInspection */ // php storm complains about merge in loops
+                $appendBasket = array_merge($appendBasket, $rule->additionalProducts);
+            }
+
+            // check if we add/subtract value from the cart
+            if (!empty($rule->valueModifier)) {
+                $modifier += $rule->valueModifier;
+            }
+
+            // check if we multiply basket value
+            if (!empty($rule->valueMultiplier)) {
+                $multiplier = $rule->valueMultiplier;
+            }
+
+            // do we stop rule processing?
+            if ($rule->stop) {
+                break;
+            }
+        }
+
+        // apply product based rules
+        foreach($this->getRuleRepository()->getAll(false) as $rule) {
+            // we can eliminate rules that are not yet in the effect or are from the past
+            // @todo disable rules from the past?
+            if ($rule->since !== null && $t < $rule->since) {
+                continue;
+            }
+
+            if ($rule->until !== null && $t > $rule->until) {
+                continue;
+            }
+
+            // iterate over products
+            foreach($products as $product) {
+
+                // set current product as a context
+                $context['product'] = $product;
+
+                try {
+                    // check if rule evaluates to true
+                    $status = $this->getRuler()->assert($rule->rule, $context);
+
+                } catch (\Hoa\Ruler\Exception\Asserter $e) {
+                    continue;
+                }
+                // @todo this code is similar to code for basket. Think about extracting it to a method.
+                if (!$status) {
+                    continue;
+                }
+
+                // add rule to the list of rules applied to the cart.
+                $product->applied_rules[] = $rule->name;
+
+                // check if rule adds products to basket
                 if (!empty($rule->additionalProducts)) {
-                    /** @noinspection SlowArrayOperationsInLoopInspection */
+                    /** @noinspection SlowArrayOperationsInLoopInspection */ // php storm complains about merge in loops
                     $appendBasket = array_merge($appendBasket, $rule->additionalProducts);
                 }
 
+                // check if we add/subtract value from the cart
                 if (!empty($rule->valueModifier)) {
-                    $modifier += $rule->valueModifier;
+                    $product->modifier += $rule->valueModifier;
                 }
 
+                // check if we multiply basket value
                 if (!empty($rule->valueMultiplier)) {
-                    $multiplier = $rule->valueMultiplier;
+                    $product->multiplier = $rule->valueMultiplier;
                 }
 
                 if ($rule->stop) {
@@ -91,21 +189,72 @@ class RulesService {
         }
 
         foreach ($products as $product) {
-            $return['price']                += $product['product']->price*$product['quantity'];
-            $return['price_with_discounts'] += round(($product['product']->price* $product['quantity']) * $multiplier, 2);
-            $return['products'][]           = [
-                'product'                           => $product['product'],
-                'quantity'                          => $product['quantity'],
+            $return['price']                += $product->price * $product->quantity;
+
+
+            $product->price_with_discount   = round($product->price * $product->multiplier, 2);
+            $return['price_with_discounts'] += round(($product->price_with_discount * $product->quantity) * $multiplier, 2);
+
+            $return['products'][]   = [
+                'id'                    => $product->id,
+                'quantity'              => $product->quantity,
+                'applied_rules'         => $product->applied_rules,
+                'price_with_discount'   => $product->price_with_discount,
+                'price'                 => $product->price
             ];
-            $return['applied_rules']        = $appliedRules;
         }
-        $return['products'] = array_merge($return['products'], $appendBasket);
+        $return['products']             = array_merge($return['products'], $appendBasket);
         $return['price_with_discounts'] += $modifier;
 
         return $return;
     }
 
     /**
+     * Set ruler and add additional operators.
+     *
+     * @param Ruler $ruler
+     */
+    public function setRuler(Ruler $ruler): void {
+        $inCategoryOperator = new \Hoa\Ruler\Visitor\Asserter();
+        $inCategoryOperator->setOperator('in_category', array($this, 'operatorCategoryMatch'));
+
+        $ruler->setAsserter($inCategoryOperator);
+
+        //@todo add more stuff
+
+        $this->ruler = $ruler;
+    }
+
+    /**
+     * This operator checks if given category is on the list of product categories. It supports wildcard.
+     *
+     * @example
+     *  in_path('RTV/Telewizor/*', product.categories)
+     *
+     * @param $categoryToMatch
+     * @param $categories
+     * @return bool
+     */
+    public function operatorCategoryMatch($categoryToMatch, $categories) : bool {
+
+        // make sure that regular expression is ok
+        $categoryToMatch = preg_quote($categoryToMatch, '|');
+
+        // replace \* with .* to support wildcards
+        $categoryToMatch = str_replace('\*', '.*', $categoryToMatch);
+
+        // iterate over categories on a list and break on first match
+        foreach($categories as $category) {
+            if (preg_match('|'.$categoryToMatch.'|', $category)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * This will display rule in visual way.
+     *
      * @param string $rule
      */
     private function debugRule(string $rule): void {
@@ -121,24 +270,37 @@ class RulesService {
     }
 
     /**
-     * @param array $products
-     * @param Entity $user
-     * @return Context
+     * @return RuleContext
      */
-    private function getContext(array $products, Entity $user): Context {
-        $context                               = new Context();
-        $context['user']                       = $user;
-        $context['products']                   = $products;
-        $context['all_products_attribute_ids'] = function () use ($products) {
-            foreach ($products as $product) {
-                $attributeIds = [];
-                /** @var \App\Models\ProductAttribute\Entity $attribute */
-                foreach ($product['product']->attributes as $attribute) {
-                    $attributeIds[] = $attribute->id;
-                }
-                return array_unique($attributeIds);
-            }
-        };
-        return $context;
+    public function getContext(): RuleContext {
+        return $this->context;
+    }
+
+    /**
+     * @param RuleContext $context
+     */
+    public function setContext(RuleContext $context): void {
+        $this->context = $context;
+    }
+
+    /**
+     * @return Ruler
+     */
+    public function getRuler(): Ruler {
+        return $this->ruler;
+    }
+
+    /**
+     * @return Collection
+     */
+    public function getRuleRepository(): Collection {
+        return $this->ruleRepository;
+    }
+
+    /**
+     * @param Collection $ruleRepository
+     */
+    public function setRuleRepository(Collection $ruleRepository): void {
+        $this->ruleRepository = $ruleRepository;
     }
 }

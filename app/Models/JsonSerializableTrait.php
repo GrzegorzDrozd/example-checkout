@@ -1,8 +1,11 @@
 <?php
-
 namespace App\Models;
 
-
+/**
+ * Serialize object to json. \JsonSerializable compatible.
+ *
+ * @package App\Models
+ */
 trait JsonSerializableTrait  {
 
     public function jsonSerialize (){

@@ -1,17 +1,19 @@
 <?php
-
 namespace App\Models\Product;
 
-
+/**
+ * Product collection
+ *
+ * @package App\Models\Product
+ */
 class Collection {
 
-
     /**
+     * @param int[] $entityIds
      * @return Entity[]
      */
-    public function getByIds($ids){
+    public function getByIds($entityIds){
         // @todo implement correct user storage
-
         $products = [
             1 => Entity::createFromArray([
                 'id'            => 1,
@@ -102,9 +104,9 @@ class Collection {
 
         $return = [];
 
-        foreach ($ids as $id) {
+        foreach ($entityIds as $id) {
             if (empty($products[$id])) {
-                throw new NotFound('Product not found');
+                throw new NotFoundException('Product not found');
             }
             $return[$id] = $products[$id];
         }

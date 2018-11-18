@@ -5,7 +5,7 @@ Content-Type: application/json
   "name": "darmowe okulary do teleizora 3d!!",
   "rule": "3 in all_products_attribute_ids",
   "additionalProducts": [
-    {"id": 5, "q": 1}
+    {"id": 5, "quantity": 1}
   ]
 }
 
@@ -23,7 +23,7 @@ Content-Type: application/json
 
 ###
 
-DELETE http://127.0.0.1:9999/rules/4aee8bc39ae7f9f1c86c945b958b9c97
+DELETE http://127.0.0.1:9999/rules/397f9810b156eec08dcdb7b09d7525ae
 Content-Type: application/json
 
 ###
@@ -34,8 +34,36 @@ Content-Type: application/json
 {
   "name": "darmowe okulary do teleizora 3d!",
   "rule": "3 in all_products_attribute_ids",
-  "valueMultiplier": 0.8,
-  "valueModifier": -30
+  "valueMultiplier": 1,
+  "valueModifier": 0,
+  "additionalProducts": [
+    {"id": 5, "quantity": 1}
+  ]
 }
 
 ###
+
+POST http://127.0.0.1:9999/rules/
+Content-Type: application/json
+
+{
+  "name": "-10% na telewizor!",
+  "rule": "in_path('RTV/Telewizor/*', product.categories)",
+  "valueMultiplier": 0.9
+}
+
+###
+
+
+PUT http://127.0.0.1:9999/rules/f921aa8ac11aa564555e627fe6d138da
+Content-Type: application/json
+
+{
+  "name": "-10% na telewizor!",
+  "rule": "in_category('RTV/Telewizory/*', product.categories)",
+  "basket": false,
+  "valueMultiplier": 0.90
+}
+
+###
+

@@ -1,11 +1,18 @@
 <?php
-
 namespace App\Models;
 
-
+/**
+ * Base class for all entities
+ * 
+ * @package App\Models
+ */
 abstract class AbstractEntity {
 
     /**
+     * Create entity from array
+     *
+     * This is crude method that will copy array keys to fields with simple check if property is defined in the object
+     *
      * @param array $data
      * @return AbstractEntity
      */

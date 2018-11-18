@@ -1,15 +1,18 @@
 <?php
-
 namespace App\Models\User;
 
-
+/**
+ * Users collection
+ * 
+ * @package App\Models\User
+ */
 class Collection {
 
-
     /**
-     * @return User\Entity
+     * @param int $userId
+     * @return Entity
      */
-    public function getById($userId){
+    public function getById($userId): Entity {
         // @todo implement correct user storage
 
         $users = [
@@ -60,7 +63,7 @@ class Collection {
         ];
 
         if (empty($users[$userId])) {
-            throw new NotFound('User not found');
+            throw new NotFoundException('User not found');
         }
         return $users[$userId];
     }

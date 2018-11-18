@@ -28,8 +28,9 @@ class Handler extends ExceptionHandler
      *
      * This is a great spot to send exceptions to Sentry, Bugsnag, etc.
      *
-     * @param  \Exception  $exception
+     * @param  \Exception $exception
      * @return void
+     * @throws Exception
      */
     public function report(Exception $exception)
     {
@@ -45,6 +46,15 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Exception $exception)
     {
-        return parent::render($request, $exception);
+        var_dump($exception->getMessage());
+        var_dump(get_class($exception));
+        foreach($exception->getTrace() as $row) {
+            if (!empty($row['file'])) {
+                print $row['file'].'@'.$row['line']."\n";
+            } else {
+                print $row['class']."\n";
+            }
+        }
+        return new \Illuminate\Http\Response('Error', 500, ['Content-type: application/json']);
     }
 }
