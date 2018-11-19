@@ -2,6 +2,10 @@
 
 Example project: rule based checkout price calculator.
 
+It is based on [https://lumen.laravel.com/docs/5.7](Lumen micro-framework) and [https://hoa-project.net/En/Literature/Hack/Ruler.html](Hoa\Ruler) component for rule parsing.
+
+It is not production ready software. It is created only as a demo software. You cannot use, reuse, change or copy any part of it for purpose other than skill evaluation.
+
 ## Requirements
 
 Tested on: PHP 7.2.10.
@@ -48,6 +52,39 @@ Send post request to /rules/. Rule can have the following fields:
 ..* product: with id and quantity fields.
 
 Rule grammar is based on [https://hoa-project.net/En/Literature/Hack/Ruler.html](https://hoa-project.net/En/Literature/Hack/Ruler.html)
+
+Following fields are available in rule definition:
+
+* user
+  * user.email
+  * user.countryCode
+  * user.groups - list of groups that user belongs to
+  * user.tags   - list of tags that are assigned to an user
+  * user.created
+  * user.lastLogin
+  * user.lastPurchase
+* product
+  * product.name
+  * product.categories
+  * product.tags
+  * product.price
+  * product.attributes
+* products - list of all products in the cart
+
+There are also additional variables created during checkout:
+* all_products_attribute_ids
+* all_products_categories
+
+TODO add more    
+
+
+/rules endpoint supports following operations:
+
+* get /rules to get list of rules
+* get /rules/{id} to get specific rule
+* post /rules - to create new rule
+* put /rules/{id} to update specific rule
+* delete /rules/{id} to remove rule 
 
 To calculate cart value send post request to /checkout/ endpoint:
 
